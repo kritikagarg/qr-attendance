@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS_153 Attendance — Admin</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 32px 20px;
+        }
+        header {
+            max-width: 920px;
+            margin: 0 auto 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+        .live-badge {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            background: #d1fae5;
+            color: #065f46;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .live-dot {
+            width: 8px; height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        .main { max-width: 920px; margin: 0 auto; }
+        #start-section {
+            text-align: center;
+            padding: 80px 0;
+        }
+        #start-section p { color: #666; font-size: 16px; margin-bottom: 28px; }
+        .btn-primary {
+            padding: 16px 48px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background: #4338ca; }
+        #session-section { display: none; }
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+        @media (max-width: 640px) { .layout { grid-template-columns: 1fr; } }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+        }
+        .card-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+        #qrCode {
+            width: 100%;
+            max-width: 260px;
+            display: block;
+            margin: 0 auto;
+            border-radius: 8px;
+            border: 1px solid #f0f0f0;
+        }
+        .session-meta {
+            text-align: center;
+            margin-top: 16px;
+        }
+        .session-date { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+        .session-id { font-size: 11px; color: #bbb; margin-top: 4px; font-family: monospace; }
+        .count-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .count-badge {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            text-align: left;
+            font-size: 11px;
+            color: #bbb;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        tbody td {
+            padding: 12px 0;
+            font-size: 14px;
+            border-bottom: 1px solid #f9f9f9;
+        }
+        tbody td:first-child { font-weight: 600; color: #1a1a1a; }
+        tbody td:last-child { color: #999; font-size: 13px; }
+        .empty-state { text-align: center; padding: 32px 0; color: #ccc; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>CS_153 Attendance</h1>
+        <div class="live-badge" id="liveBadge">
+            <div class="live-dot"></div>
+            Live
+        </div>
+    </header>
+
+    <main class="main">
+        <div id="start-section">
+            <p>Click below to generate a QR code for today's session.</p>
+            <button class="btn-primary" onclick="startSession()">Start New Session</button>
+        </div>
+
+        <div id="session-section">
+            <div class="layout">
+                <div class="card">
+                    <div class="card-title">QR Code — Scan to Check In</div>
+                    <img id="qrCode" src="" alt="QR Code" />
+                    <div class="session-meta">
+                        <div class="session-date" id="sessionDate"></div>
+                        <div class="session-id" id="sessionIdLabel"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="count-row">
+                        <div class="card-title" style="margin-bottom:0">Checked In</div>
+                        <span class="count-badge" id="count">0</span>
+                    </div>
+                    <div class="empty-state" id="emptyState">Waiting for students&hellip;</div>
+                    <table id="attendanceTable" style="display:none">
+                        <thead>
+                            <tr><th>Name</th><th>Time</th></tr>
+                        </thead>
+                        <tbody id="attendanceList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentSessionId = null;
+        let pollTimer = null;
+
+        async function startSession() {
+            try {
+                const res = await fetch('/api/sessions', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) { alert(data.error); return; }
+
+                currentSessionId = data.sessionId;
+
+                document.getElementById('qrCode').src = data.qrDataUrl;
+                document.getElementById('sessionDate').textContent = `Date: ${data.date}`;
+                document.getElementById('sessionIdLabel').textContent = `Session: ${data.sessionId.slice(0, 8)}…`;
+
+                document.getElementById('start-section').style.display = 'none';
+                document.getElementById('session-section').style.display = 'block';
+
+                const badge = document.getElementById('liveBadge');
+                badge.style.display = 'flex';
+
+                fetchAttendance();
+                pollTimer = setInterval(fetchAttendance, 3000);
+            } catch (e) {
+                alert('Failed to start session. Is the server running?');
+            }
+        }
+
+        async function fetchAttendance() {
+            if (!currentSessionId) return;
+            try {
+                const res = await fetch(`/api/sessions/${currentSessionId}/attendance`);
+                const data = await res.json();
+                renderAttendance(data.students || []);
+            } catch { /* silently ignore poll errors */ }
+        }
+
+        function renderAttendance(students) {
+            document.getElementById('count').textContent = students.length;
+
+            if (students.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('attendanceTable').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('attendanceTable').style.display = 'table';
+
+            document.getElementById('attendanceList').innerHTML = students
+                .map(s => `<tr><td>${s.name}</td><td>${s.checkedInAt}</td></tr>`)
+                .join('');
+        }
+    </script>
+</body>
+</html>
