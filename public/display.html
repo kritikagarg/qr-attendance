@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan to Check In</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+        }
+        h1 {
+            color: white;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #a0a0c0;
+            font-size: 20px;
+            margin-bottom: 40px;
+        }
+        .qr-wrapper {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            display: inline-block;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+        }
+        #qrCode { width: 320px; height: 320px; display: block; }
+        .instructions {
+            color: #a0a0c0;
+            font-size: 18px;
+            margin-top: 32px;
+        }
+        .count {
+            margin-top: 20px;
+            color: #6ee7b7;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        #noSession {
+            color: #a0a0c0;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="noSession">Waiting for instructor to start a session&hellip;</div>
+
+        <div id="sessionView" style="display:none">
+            <h1>CS_153 Attendance</h1>
+            <p class="subtitle" id="dateLabel"></p>
+            <div class="qr-wrapper">
+                <img id="qrCode" src="" alt="QR Code" />
+            </div>
+            <p class="instructions">Scan with your phone camera to mark attendance</p>
+            <p class="count" id="countLabel"></p>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('session');
+
+        if (sessionId) {
+            document.getElementById('noSession').style.display = 'none';
+            document.getElementById('sessionView').style.display = 'block';
+
+            // Load QR from admin API
+            fetch('/api/sessions/' + sessionId + '/attendance')
+                .then(r => r.json())
+                .then(data => {
+                    updateCount(data.students ? data.students.length : 0);
+                });
+
+            // The QR image src is passed via URL param
+            const qr = params.get('qr');
+            if (qr) {
+                document.getElementById('qrCode').src = decodeURIComponent(qr);
+            }
+
+            const date = params.get('date');
+            if (date) {
+                document.getElementById('dateLabel').textContent = date;
+            }
+
+            // Poll check-in count every 3s
+            setInterval(() => {
+                fetch('/api/sessions/' + sessionId + '/attendance')
+                    .then(r => r.json())
+                    .then(data => updateCount(data.students ? data.students.length : 0));
+            }, 3000);
+        }
+
+        function updateCount(n) {
+            document.getElementById('countLabel').textContent =
+                n === 0 ? '' : n + ' student' + (n === 1 ? '' : 's') + ' checked in';
+        }
+    </script>
+</body>
+</html>
