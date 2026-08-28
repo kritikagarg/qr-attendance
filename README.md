@@ -2,6 +2,8 @@
 
 A classroom attendance system where students scan a QR code, enter their name, and get marked present in a Google Sheet — automatically.
 
+> Want to build this yourself from scratch? Read the [implementation guide](report.md).
+
 ## How It Works
 
 1. Instructor opens the admin page and clicks **Start New Session**
