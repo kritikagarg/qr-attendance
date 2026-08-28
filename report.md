@@ -12,7 +12,7 @@ The system has three moving parts:
 2. **Student check-in page** — students scan the QR code on their phone, type their name, and get marked present
 3. **Google Sheet** — the single source of truth; the app reads the roster from it and writes attendance back to it
 
-The key feature is **fuzzy name matching** — students don't have to type their name perfectly. "Jon Smith" will match "JONATHON SMITH" in the roster. If a name genuinely doesn't match, the student sees a "Name not found" message and is asked to contact the instructor.
+The key feature is **fuzzy name matching** — students don't have to type their name perfectly. "alice s" will match "ALICE SMITH" in the roster. If a name genuinely doesn't match, the student sees a "Name not found" message and is asked to contact the instructor.
 
 ---
 
@@ -55,8 +55,8 @@ Example:
 Row 1: [empty]
 Row 2: CS_153 | 8/26 | 8/31 | 9/2 | ...
 Row 3: Student Names | Wed | Mon | Wed | ...
-Row 4: NADIA ALVIS
-Row 5: ANISH REDDY DESIREDDY
+Row 4: ALICE SMITH
+Row 5: BOB JOHNSON
 ...
 ```
 
