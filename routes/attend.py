@@ -31,7 +31,7 @@ def attend():
         return jsonify({'success': False, 'noMatch': True})
 
     if 'suggestions' in result:
-        return jsonify({'success': False, 'suggestions': result['suggestions']})
+        return jsonify({'success': False, 'noMatch': True})
 
     student = result['student']
     row = student['row']
